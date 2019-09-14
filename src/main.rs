@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{debug, error};
 use serenity::{
     framework::standard::*, model::application::CurrentApplicationInfo, model::id::UserId,
     prelude::*,
@@ -19,7 +19,7 @@ fn main() {
     )
     .expect("unable to parse configuration");
 
-    // i don't think serde lets you deserialize a toml array into a HashSet
+    // convert the vector into a HashSet if needed
     let mut admins = HashSet::new();
     if let Some(admin_ids) = &config.admins {
         for id in admin_ids.iter() {
@@ -29,16 +29,13 @@ fn main() {
 
     logger::start_logging(config.log_level).expect("unable to initiate logging");
 
-    debug!("creating client");
+    debug!("creating client struct");
     let mut client =
         Client::new(&config.token, event_handler::Handler).expect("unable to initiate client");
 
-    debug!("fetching bot owner");
+    debug!("fetching bot owner from discord");
     match client.cache_and_http.http.get_current_application_info() {
-        Ok(CurrentApplicationInfo { owner, .. }) => {
-            admins.insert(owner.id);
-            ()
-        }
+        Ok(CurrentApplicationInfo { owner, .. }) => admins.insert(owner.id),
         Err(message) => panic!("unable to get application info: {:?}", message),
     };
 
@@ -47,14 +44,14 @@ fn main() {
     );
 
     {
-        debug!("storing configuration inside of the data typemap");
+        debug!("storing configuration inside of the data TypeMap");
         let mut data = client.data.write();
         let _ = data.insert::<config::Configuration>(config);
     }
 
-    info!("starting bot");
     // TODO(superwhiskers): implement sharding support and then switch this to be
     // "start_autosharded"
+    debug!("starting bot");
     if let Err(message) = client.start() {
         error!("client exited: {:?}", message);
     }

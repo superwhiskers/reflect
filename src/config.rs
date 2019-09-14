@@ -41,11 +41,11 @@ impl Key for Configuration {
 }
 
 fn default_prefix() -> String {
-    "r~".to_string()
+    String::from("r~")
 }
 
 fn default_channel_name() -> String {
-    "megachat".to_string()
+    String::from("megachat")
 }
 
 fn default_log_level() -> LevelFilter {
