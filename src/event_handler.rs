@@ -1,7 +1,7 @@
 use log::{debug, info};
 use serenity::{
-    model::gateway::{Activity, Ready},
     model::channel::Message,
+    model::gateway::{Activity, Ready},
     prelude::*,
 };
 
@@ -18,7 +18,9 @@ impl EventHandler for Handler {
         let data = context.data.read();
         let prefix = match data.get::<config::Configuration>() {
             Some(config) => &config.prefix,
-            None => panic!("no configuration was stored inside of the data typemap (this is a severe bug)"),
+            None => panic!(
+                "no configuration was stored inside of the data typemap (this is a severe bug)"
+            ),
         };
         context.set_activity(Activity::listening(
             format!("your conversations | {}", prefix).as_str(),

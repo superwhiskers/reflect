@@ -1,4 +1,5 @@
 use log::{debug, error};
+use rocksdb::{Options, DB};
 use serenity::{
     framework::standard::*, model::application::CurrentApplicationInfo, model::id::UserId,
     prelude::*,
@@ -7,6 +8,7 @@ use std::{collections::HashSet, fs, str::FromStr};
 use toml;
 
 mod config;
+mod defaults;
 mod event_handler;
 mod logger;
 mod types;
@@ -27,7 +29,10 @@ fn main() {
         }
     }
 
-    logger::start_logging(config.log_level).expect("unable to initiate logging");
+    debug!("initiating rocksdb");
+    // TODO(superwhiskers): finish this
+
+    logger::start_logging(config.log_level, config.log_file).expect("unable to initiate logging");
 
     debug!("creating client struct");
     let mut client =
@@ -47,6 +52,8 @@ fn main() {
         debug!("storing configuration inside of the data TypeMap");
         let mut data = client.data.write();
         let _ = data.insert::<config::Configuration>(config);
+
+        debug!("storing rocksdb connection inside of the data TypeMap");
     }
 
     // TODO(superwhiskers): implement sharding support and then switch this to be

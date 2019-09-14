@@ -2,7 +2,7 @@ use chrono;
 use fern;
 use log::LevelFilter;
 
-pub fn start_logging(log_level: LevelFilter) -> Result<(), fern::InitError> {
+pub fn start_logging(log_level: LevelFilter, log_file: &str) -> Result<(), fern::InitError> {
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -15,7 +15,7 @@ pub fn start_logging(log_level: LevelFilter) -> Result<(), fern::InitError> {
         })
         .level(log_level)
         .chain(std::io::stdout())
-        .chain(fern::log_file("output.log")?)
+        .chain(fern::log_file(log_file)?)
         .apply()?;
     Ok(())
 }
