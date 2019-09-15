@@ -12,4 +12,6 @@ log = { version = "0.4", features = ["max_level_debug", "release_max_level_info"
 fern = "0.5"
 chrono = "0.4"
 typemap = "0.3"
+rocksdb = "0.12"
+rmp-serde = "0.14"
 

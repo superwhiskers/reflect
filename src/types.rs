@@ -1,11 +1,12 @@
 use log::LevelFilter;
-use rocksdb::DB;
+use rocksdb::{ColumnFamily, DB};
 use serde::Deserialize;
-use std::fmt;
+use std::{fmt, sync::Arc, collections::HashMap};
 use typemap::Key;
 
 use crate::defaults;
 
+/// alias type used for implementing the Deserialize trait on the LevelFilter enum
 #[derive(Deserialize)]
 #[serde(remote = "LevelFilter")]
 enum LevelFilterDef {
@@ -17,22 +18,23 @@ enum LevelFilterDef {
     Trace,
 }
 
+/// a struct used to hold the data parsed from the configuration file
 #[derive(Deserialize, fmt::Debug)]
 pub struct Configuration {
     pub token: String,
 
-    #[serde(default = "defaults::default_prefix")]
+    #[serde(default = "defaults::prefix")]
     pub prefix: String,
 
-    #[serde(default = "defaults::default_log_file")]
+    #[serde(default = "defaults::log_file")]
     pub log_file: String,
 
-    #[serde(default = "defaults::default_database_file")]
+    #[serde(default = "defaults::database_file")]
     pub database_file: String,
 
     pub admins: Option<Vec<String>>,
 
-    #[serde(default = "defaults::default_log_level", with = "LevelFilterDef")]
+    #[serde(default = "defaults::log_level", with = "LevelFilterDef")]
     pub log_level: LevelFilter,
 }
 
@@ -45,10 +47,12 @@ impl fmt::Display for Configuration {
 }
 
 impl Key for Configuration {
-    type Value = Configuration;
+    type Value = Arc<Configuration>;
 }
 
-struct Database;
+/// a struct used as the key for the database on the data TypeMap
+#[derive(fmt::Debug)]
+pub struct Database;
 
 impl fmt::Display for Database {
     // TODO(superwhiskers): same here
@@ -58,5 +62,5 @@ impl fmt::Display for Database {
 }
 
 impl Key for Database {
-    type Value = DB;
+    type Value = Arc<DB>;
 }

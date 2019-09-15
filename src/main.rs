@@ -1,25 +1,27 @@
-use log::{debug, error};
+use log::error;
 use rocksdb::{Options, DB};
 use serenity::{
     framework::standard::*, model::application::CurrentApplicationInfo, model::id::UserId,
     prelude::*,
 };
-use std::{collections::HashSet, fs, str::FromStr};
+use std::{collections::HashSet, fs, str::FromStr, sync::Arc};
 use toml;
 
-mod config;
 mod defaults;
 mod event_handler;
 mod logger;
 mod types;
+mod commands;
 
 fn main() {
-    let config: config::Configuration = toml::from_str(
+    let config: types::Configuration = toml::from_str(
         fs::read_to_string("config.toml")
             .expect("unable to read configuration")
             .as_str(),
     )
     .expect("unable to parse configuration");
+
+    logger::start_logging(config.log_level, &config.log_file).expect("unable to initiate logging");
 
     // convert the vector into a HashSet if needed
     let mut admins = HashSet::new();
@@ -29,36 +31,39 @@ fn main() {
         }
     }
 
-    debug!("initiating rocksdb");
-    // TODO(superwhiskers): finish this
+    // rocksdb initialization
 
-    logger::start_logging(config.log_level, config.log_file).expect("unable to initiate logging");
+    let database = {
+        let mut db_opts = Options::default();
+        db_opts.create_if_missing(true);
 
-    debug!("creating client struct");
+        DB::open(&db_opts, &config.database_file).expect("unable to open the database file")
+    };
+
+    // discord initialization
+
     let mut client =
         Client::new(&config.token, event_handler::Handler).expect("unable to initiate client");
 
-    debug!("fetching bot owner from discord");
     match client.cache_and_http.http.get_current_application_info() {
         Ok(CurrentApplicationInfo { owner, .. }) => admins.insert(owner.id),
         Err(message) => panic!("unable to get application info: {:?}", message),
     };
 
     client.with_framework(
-        StandardFramework::new().configure(|c| c.prefix(config.prefix.as_str()).owners(admins)),
+        StandardFramework::new().configure(|c| c.prefix(config.prefix.as_str()).owners(admins)).group(&commands::utility::UTILITY_GROUP),
     );
 
     {
-        debug!("storing configuration inside of the data TypeMap");
         let mut data = client.data.write();
-        let _ = data.insert::<config::Configuration>(config);
 
-        debug!("storing rocksdb connection inside of the data TypeMap");
+        // make some data available to event handlers & commands
+        let _ = data.insert::<types::Configuration>(Arc::new(config));
+        let _ = data.insert::<types::Database>(Arc::new(database));
     }
 
     // TODO(superwhiskers): implement sharding support and then switch this to be
     // "start_autosharded"
-    debug!("starting bot");
     if let Err(message) = client.start() {
         error!("client exited: {:?}", message);
     }
