@@ -1,11 +1,11 @@
 use log::error;
-use rocksdb::{Options, DB};
+use cdrs;
 use serenity::{
     framework::standard::*, model::application::CurrentApplicationInfo, model::id::UserId,
     prelude::*,
 };
 use std::{collections::HashSet, fs, str::FromStr, sync::Arc};
-use toml;
+use ron;
 
 mod defaults;
 mod event_handler;
@@ -14,8 +14,8 @@ mod types;
 mod commands;
 
 fn main() {
-    let config: types::Configuration = toml::from_str(
-        fs::read_to_string("config.toml")
+    let config: types::Configuration = ron::de::from_str(
+        fs::read_to_string("config.ron")
             .expect("unable to read configuration")
             .as_str(),
     )
@@ -31,13 +31,16 @@ fn main() {
         }
     }
 
-    // rocksdb initialization
+    // cassandra initialization
 
-    let database = {
-        let mut db_opts = Options::default();
-        db_opts.create_if_missing(true);
-
-        DB::open(&db_opts, &config.database_file).expect("unable to open the database file")
+    let mut database = {
+        let mut hosts = Vec::new();
+        for host in &config.database.hosts {
+            hosts.push(cdrs::cluster::NodeTcpConfigBuilder::new(&host.host, &host.username.map_or_else(cdrs::authenticators::NoneAuthenticator{},|u| cdrs::authenticators::StaticPasswordAuthenticator::new(u, &host.password.unwrap_or("")))).build());
+        }
+        let mut database = cdrs::cluster::session::new(cdrs::cluster::ClusterTcpConfig(hosts), cdrs::load_balancing::RoundRobin::new()).expect("unable to create database session");
+        database.compression = &config.database.compression;
+        database
     };
 
     // discord initialization

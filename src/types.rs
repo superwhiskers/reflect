@@ -1,8 +1,9 @@
 use log::LevelFilter;
-use rocksdb::{ColumnFamily, DB};
+use cdrs::{cluster::session::Session, compression::Compression, load_balancing::LoadBalancingStrategy};
 use serde::Deserialize;
-use std::{fmt, sync::Arc, collections::HashMap};
+use std::{fmt, sync::Arc};
 use typemap::Key;
+use r2d2::{Pool, ManageConnection};
 
 use crate::defaults;
 
@@ -18,6 +19,15 @@ enum LevelFilterDef {
     Trace,
 }
 
+/// alias type used for implementing the Deserialize trait on the Compression enum
+#[derive(Deserialize)]
+#[serde(remote = "Compression")]
+enum CompressionDef {
+    Lz4,
+    Snappy,
+    None,
+}
+
 /// a struct used to hold the data parsed from the configuration file
 #[derive(Deserialize, fmt::Debug)]
 pub struct Configuration {
@@ -29,13 +39,13 @@ pub struct Configuration {
     #[serde(default = "defaults::log_file")]
     pub log_file: String,
 
-    #[serde(default = "defaults::database_file")]
-    pub database_file: String,
+    #[serde(default = "defaults::log_level", with = "LevelFilterDef")]
+    pub log_level: LevelFilter,
 
     pub admins: Option<Vec<String>>,
 
-    #[serde(default = "defaults::log_level", with = "LevelFilterDef")]
-    pub log_level: LevelFilter,
+    #[serde(default = "defaults::database_configuration")]
+    pub database: DatabaseConfig,
 }
 
 impl fmt::Display for Configuration {
@@ -50,6 +60,30 @@ impl Key for Configuration {
     type Value = Arc<Configuration>;
 }
 
+/// a struct used to hold the configuration information for the database connection
+#[derive(Deserialize, fmt::Debug)]
+pub struct DatabaseConfig {
+    #[serde(default = "defaults::database_keyspace")]
+    pub keyspace: String,
+
+    #[serde(default = "defaults::database_compression", with = "CompressionDef")]
+    pub compression: Compression,
+
+    #[serde(default = "defaults::database_hosts")]
+    pub hosts: Vec<DatabaseHost>,
+}
+
+/// a struct used to hold the configuration for each individual host
+#[derive(Deserialize, fmt::Debug)]
+pub struct DatabaseHost {
+    pub username: Option<String>,
+
+    pub password: Option<String>,
+
+    #[serde(default = "defaults::database_host_host")]
+    pub host: String,
+}
+
 /// a struct used as the key for the database on the data TypeMap
 #[derive(fmt::Debug)]
 pub struct Database;
@@ -62,5 +96,5 @@ impl fmt::Display for Database {
 }
 
 impl Key for Database {
-    type Value = Arc<DB>;
+    type Value = Arc<Session<dyn LoadBalancingStrategy<Pool<dyn ManageConnection>>>>;
 }

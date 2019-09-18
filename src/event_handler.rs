@@ -1,5 +1,4 @@
 use log::{debug, error, info, warn};
-use rmp_serde as mp;
 use serenity::{
     model::channel::Message,
     model::gateway::{Activity, Ready},
@@ -34,7 +33,7 @@ impl EventHandler for Handler {
     fn message(&self, context: Context, message: Message) {
         debug!("got a new message: {:?}", message);
 
-        let (channels, banned): (HashMap<u64, u64>, Vec<u64>) = {
+        /*let (channels, banned): (HashMap<u64, u64>, Vec<u64>) = {
             let data = context.data.read();
             let database = match data.get::<types::Database>() {
                 Some(database) => database,
@@ -46,7 +45,7 @@ impl EventHandler for Handler {
             (
                 // get the channel HashMap from the database
                 database
-                    .get("channels")
+                    .query("channels")
                     .unwrap_or_else(|e| {
                         warn!("unable to retrieve registered channels from db: {:?}", e);
                         None
@@ -64,17 +63,17 @@ impl EventHandler for Handler {
                         warn!("unable to retrieve banned users from db: {:?}", e);
                         None
                     })
-                    .map_or(vec![], |v| {
+                    .map_or(Vec::new(), |v| {
                         mp::decode::from_read(v.deref()).unwrap_or_else(|e| {
                             error!(
                                 "unable to unpack the banned users array from the db: {:?}",
                                 e
                             );
-                            vec![]
+                            Vec::new()
                         })
                     }),
             )
-        };
+        };*/
 
         debug!("preparing to dispatch a message");
         /*

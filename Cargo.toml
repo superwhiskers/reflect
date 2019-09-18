@@ -7,11 +7,11 @@ edition = "2018"
 [dependencies]
 serenity = "0.7"
 serde = "1.0"
-toml = "0.5"
+ron = "0.5"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_info"] }
 fern = "0.5"
 chrono = "0.4"
 typemap = "0.3"
-rocksdb = "0.12"
 rmp-serde = "0.14"
-
+cdrs = "2.2"
+r2d2 = "0.8"
