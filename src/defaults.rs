@@ -1,5 +1,5 @@
-use log::LevelFilter;
 use cdrs::compression::Compression;
+use log::LevelFilter;
 
 use crate::types::{DatabaseConfig, DatabaseHost};
 
@@ -20,7 +20,7 @@ pub fn log_level() -> LevelFilter {
 
 #[inline(always)]
 pub fn database_configuration() -> DatabaseConfig {
-    DatabaseConfig{
+    DatabaseConfig {
         keyspace: database_keyspace(),
         compression: database_compression(),
         hosts: database_hosts(),
@@ -39,7 +39,7 @@ pub fn database_compression() -> Compression {
 
 #[inline(always)]
 pub fn database_hosts() -> Vec<DatabaseHost> {
-    vec![DatabaseHost{
+    vec![DatabaseHost {
         username: None,
         password: None,
         host: database_host_host(),
@@ -50,4 +50,3 @@ pub fn database_hosts() -> Vec<DatabaseHost> {
 pub fn database_host_host() -> String {
     String::from("localhost:9042")
 }
-

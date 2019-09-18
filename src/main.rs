@@ -1,17 +1,17 @@
-use log::error;
 use cdrs;
+use log::error;
+use ron;
 use serenity::{
     framework::standard::*, model::application::CurrentApplicationInfo, model::id::UserId,
     prelude::*,
 };
 use std::{collections::HashSet, fs, str::FromStr, sync::Arc};
-use ron;
 
+mod commands;
 mod defaults;
 mod event_handler;
 mod logger;
 mod types;
-mod commands;
 
 fn main() {
     let config: types::Configuration = ron::de::from_str(
@@ -33,13 +33,30 @@ fn main() {
 
     // cassandra initialization
 
-    let mut database = {
+    let database = {
         let mut hosts = Vec::new();
         for host in &config.database.hosts {
-            hosts.push(cdrs::cluster::NodeTcpConfigBuilder::new(&host.host, &host.username.map_or_else(cdrs::authenticators::NoneAuthenticator{},|u| cdrs::authenticators::StaticPasswordAuthenticator::new(u, &host.password.unwrap_or("")))).build());
+            hosts.push(
+                cdrs::cluster::NodeTcpConfigBuilder::new(
+                    &host.host,
+                    &host
+                        .username
+                        .map_or(cdrs::authenticators::NoneAuthenticator {}, |u| {
+                            cdrs::authenticators::StaticPasswordAuthenticator::new(
+                                u,
+                                host.password.unwrap_or("".to_string()).clone(),
+                            )
+                        }),
+                )
+                .build(),
+            );
         }
-        let mut database = cdrs::cluster::session::new(cdrs::cluster::ClusterTcpConfig(hosts), cdrs::load_balancing::RoundRobin::new()).expect("unable to create database session");
-        database.compression = &config.database.compression;
+        let mut database = cdrs::cluster::session::new(
+            cdrs::cluster::ClusterTcpConfig(hosts),
+            cdrs::load_balancing::RoundRobin::new(),
+        )
+        .expect("unable to create database session");
+        database.compression = config.database.compression.clone();
         database
     };
 
@@ -54,7 +71,9 @@ fn main() {
     };
 
     client.with_framework(
-        StandardFramework::new().configure(|c| c.prefix(config.prefix.as_str()).owners(admins)).group(&commands::utility::UTILITY_GROUP),
+        StandardFramework::new()
+            .configure(|c| c.prefix(config.prefix.as_str()).owners(admins))
+            .group(&commands::utility::UTILITY_GROUP),
     );
 
     {
@@ -62,7 +81,6 @@ fn main() {
 
         // make some data available to event handlers & commands
         let _ = data.insert::<types::Configuration>(Arc::new(config));
-        let _ = data.insert::<types::Database>(Arc::new(database));
     }
 
     // TODO(superwhiskers): implement sharding support and then switch this to be

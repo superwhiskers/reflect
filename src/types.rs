@@ -1,9 +1,11 @@
+use cdrs::{
+    cluster::session::Session, compression::Compression, error,
+    load_balancing::LoadBalancingStrategy, transport::CDRSTransport,
+};
 use log::LevelFilter;
-use cdrs::{cluster::session::Session, compression::Compression, load_balancing::LoadBalancingStrategy};
 use serde::Deserialize;
-use std::{fmt, sync::Arc};
+use std::{cell::RefCell, fmt, sync::Arc};
 use typemap::Key;
-use r2d2::{Pool, ManageConnection};
 
 use crate::defaults;
 
@@ -84,17 +86,3 @@ pub struct DatabaseHost {
     pub host: String,
 }
 
-/// a struct used as the key for the database on the data TypeMap
-#[derive(fmt::Debug)]
-pub struct Database;
-
-impl fmt::Display for Database {
-    // TODO(superwhiskers): same here
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{:?}", self)
-    }
-}
-
-impl Key for Database {
-    type Value = Arc<Session<dyn LoadBalancingStrategy<Pool<dyn ManageConnection>>>>;
-}
