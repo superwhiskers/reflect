@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["superwhiskers <whiskerdev@protonmail.com>"]
 edition = "2018"
 
+[profile.release]
+lto = true
+
 [dependencies]
 serenity = "0.7"
 serde = "1.0"
@@ -14,3 +17,4 @@ chrono = "0.4"
 typemap = "0.3"
 rmp-serde = "0.14"
 r2d2_redis = "0.11"
+reqwest = { version =  "0.9", features = ["rustls-tls"], default-features = false }

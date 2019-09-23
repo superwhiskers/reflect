@@ -1,11 +1,14 @@
 use log::{debug, error, info};
 use r2d2_redis::redis::Commands;
+use reqwest;
 use serenity::{
+    http::AttachmentType,
     model::channel::Message,
     model::gateway::{Activity, Ready},
     model::id::ChannelId,
     prelude::*,
 };
+use std::io::Read;
 
 use crate::types;
 
@@ -99,15 +102,37 @@ impl EventHandler for Handler {
             }
         };
 
+        // TODO(superwhiskers): make this handle multiple attachments later. this is so *extremely
+        // hacky* it hurts me to look at it
+        let mut file = Vec::new();
+        let mut files = Vec::new();
+        if !message.attachments.is_empty() {
+            // TODO(superwhiskers): fix this to not panic on error, and actually handle it
+            // correctly
+            reqwest::get(reqwest::Url::parse(message.attachments[0].url.as_str()).unwrap())
+                .unwrap()
+                .read_to_end(&mut file)
+                .unwrap();
+            files = vec![AttachmentType::Bytes((
+                file.as_slice(),
+                message.attachments[0].filename.as_str(),
+            ))];
+        } else {
+            drop(file);
+        }
+
         for channel in channel_iterator {
             let channel = ChannelId(channel);
             if channel == message.channel_id {
                 continue;
             }
-            channel.send_message(&context.http, |m| {
-                m.content(&content)
-                // i don't feel like handling files yet. the bare minimum is enough for now
-            });
+            if let Err(message) = channel.send_message(&context.http, |m| {
+                m.content(&content).files(files.clone())
+                // TODO(superwhiskers): this is horribly inefficient, but with the way serenity
+                // handles attachments, there is *literally* no other way
+            }) {
+                error!("unable to mirror message to discord: {:?}", message);
+            }
         }
     }
 }
