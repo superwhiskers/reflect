@@ -1,10 +1,7 @@
-use cdrs::{
-    cluster::session::Session, compression::Compression, error,
-    load_balancing::LoadBalancingStrategy, transport::CDRSTransport,
-};
 use log::LevelFilter;
+use r2d2_redis::{r2d2::Pool, RedisConnectionManager};
 use serde::Deserialize;
-use std::{cell::RefCell, fmt, sync::Arc};
+use std::{fmt, sync::Arc};
 use typemap::Key;
 
 use crate::defaults;
@@ -21,15 +18,6 @@ enum LevelFilterDef {
     Trace,
 }
 
-/// alias type used for implementing the Deserialize trait on the Compression enum
-#[derive(Deserialize)]
-#[serde(remote = "Compression")]
-enum CompressionDef {
-    Lz4,
-    Snappy,
-    None,
-}
-
 /// a struct used to hold the data parsed from the configuration file
 #[derive(Deserialize, fmt::Debug)]
 pub struct Configuration {
@@ -44,7 +32,7 @@ pub struct Configuration {
     #[serde(default = "defaults::log_level", with = "LevelFilterDef")]
     pub log_level: LevelFilter,
 
-    pub admins: Option<Vec<String>>,
+    pub admins: Option<Vec<u64>>,
 
     #[serde(default = "defaults::database_configuration")]
     pub database: DatabaseConfig,
@@ -65,24 +53,24 @@ impl Key for Configuration {
 /// a struct used to hold the configuration information for the database connection
 #[derive(Deserialize, fmt::Debug)]
 pub struct DatabaseConfig {
-    #[serde(default = "defaults::database_keyspace")]
-    pub keyspace: String,
-
-    #[serde(default = "defaults::database_compression", with = "CompressionDef")]
-    pub compression: Compression,
-
-    #[serde(default = "defaults::database_hosts")]
-    pub hosts: Vec<DatabaseHost>,
-}
-
-/// a struct used to hold the configuration for each individual host
-#[derive(Deserialize, fmt::Debug)]
-pub struct DatabaseHost {
-    pub username: Option<String>,
-
-    pub password: Option<String>,
-
-    #[serde(default = "defaults::database_host_host")]
+    #[serde(default = "defaults::database_host")]
     pub host: String,
+
+    #[serde(default = "defaults::database_max_connections")]
+    pub max_connections: u32,
 }
 
+/// a struct used to represent the database connection object in the TypeMap
+#[derive(fmt::Debug)]
+pub struct Database;
+
+impl fmt::Display for Database {
+    // TODO(superwhiskers): same here
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{:?}", self)
+    }
+}
+
+impl Key for Database {
+    type Value = Arc<Pool<RedisConnectionManager>>;
+}

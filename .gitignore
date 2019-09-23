@@ -1,6 +1,6 @@
 /target
 **/*.rs.bk
 
-config.toml
+config.ron
 output.log
 reflect.db/

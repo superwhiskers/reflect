@@ -1,11 +1,11 @@
-use cdrs;
 use log::error;
+use r2d2_redis::{r2d2, redis::Commands, RedisConnectionManager};
 use ron;
 use serenity::{
     framework::standard::*, model::application::CurrentApplicationInfo, model::id::UserId,
     prelude::*,
 };
-use std::{collections::HashSet, fs, str::FromStr, sync::Arc};
+use std::{collections::HashSet, fs, sync::Arc};
 
 mod commands;
 mod defaults;
@@ -14,7 +14,7 @@ mod logger;
 mod types;
 
 fn main() {
-    let config: types::Configuration = ron::de::from_str(
+    let mut config: types::Configuration = ron::de::from_str(
         fs::read_to_string("config.ron")
             .expect("unable to read configuration")
             .as_str(),
@@ -27,38 +27,19 @@ fn main() {
     let mut admins = HashSet::new();
     if let Some(admin_ids) = &config.admins {
         for id in admin_ids.iter() {
-            admins.insert(UserId::from_str(id).expect("unable to parse string userid to a UserId"));
+            admins.insert(UserId(*id));
         }
     }
 
-    // cassandra initialization
+    // redis initialization
 
-    let database = {
-        let mut hosts = Vec::new();
-        for host in &config.database.hosts {
-            hosts.push(
-                cdrs::cluster::NodeTcpConfigBuilder::new(
-                    &host.host,
-                    &host
-                        .username
-                        .map_or(cdrs::authenticators::NoneAuthenticator {}, |u| {
-                            cdrs::authenticators::StaticPasswordAuthenticator::new(
-                                u,
-                                host.password.unwrap_or("".to_string()).clone(),
-                            )
-                        }),
-                )
-                .build(),
-            );
-        }
-        let mut database = cdrs::cluster::session::new(
-            cdrs::cluster::ClusterTcpConfig(hosts),
-            cdrs::load_balancing::RoundRobin::new(),
+    let database = r2d2::Pool::builder()
+        .max_size(config.database.max_connections.clone())
+        .build(
+            RedisConnectionManager::new(config.database.host.as_str())
+                .expect("unable to create a connection manager for the redis server"),
         )
-        .expect("unable to create database session");
-        database.compression = config.database.compression.clone();
-        database
-    };
+        .expect("unable to create a Pool of connections to the redis server");
 
     // discord initialization
 
@@ -66,13 +47,34 @@ fn main() {
         Client::new(&config.token, event_handler::Handler).expect("unable to initiate client");
 
     match client.cache_and_http.http.get_current_application_info() {
-        Ok(CurrentApplicationInfo { owner, .. }) => admins.insert(owner.id),
+        Ok(CurrentApplicationInfo { owner, .. }) => {
+            admins.insert(owner.id);
+            if let Some(admin_ids) = &mut config.admins {
+                admin_ids.push(*owner.id.as_u64());
+            } else {
+                config.admins = Some(vec![*owner.id.as_u64()]);
+            }
+        }
         Err(message) => panic!("unable to get application info: {:?}", message),
     };
 
+    // place the completed admin hashset into redis
+
+    {
+        let mut database = database
+            .get()
+            .expect("unable to get a connection to the redis server from the pool");
+        match database
+            .sadd::<&str, Vec<u64>, u64>("admins", config.admins.as_ref().unwrap().clone())
+        {
+            Ok(_) => (),
+            Err(message) => panic!("unable to load admin hashset into redis: {:?}", message),
+        }
+    }
+
     client.with_framework(
         StandardFramework::new()
-            .configure(|c| c.prefix(config.prefix.as_str()).owners(admins))
+            .configure(|c| c.prefix(&config.prefix.as_str().clone()).owners(admins))
             .group(&commands::utility::UTILITY_GROUP),
     );
 
@@ -81,6 +83,7 @@ fn main() {
 
         // make some data available to event handlers & commands
         let _ = data.insert::<types::Configuration>(Arc::new(config));
+        let _ = data.insert::<types::Database>(Arc::new(database));
     }
 
     // TODO(superwhiskers): implement sharding support and then switch this to be
