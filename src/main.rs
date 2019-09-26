@@ -7,6 +7,7 @@ use serenity::{
 };
 use std::{collections::HashSet, fs, sync::Arc};
 
+mod colors;
 mod commands;
 mod defaults;
 mod event_handler;
@@ -75,6 +76,7 @@ fn main() {
     client.with_framework(
         StandardFramework::new()
             .configure(|c| c.prefix(&config.prefix.as_str().clone()).owners(admins))
+            .help(&commands::help::HELP)
             .group(&commands::utility::UTILITY_GROUP),
     );
 
