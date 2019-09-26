@@ -34,21 +34,21 @@ impl EventHandler for Handler {
     }
 
     fn message(&self, context: Context, message: Message) {
-        debug!("got a new message: {:?}", message);
+        debug!("got a new message from guild {} in channel {}", message.guild_id.unwrap().0, message.channel_id.0);
 
         // ignore bots
         if message.author.bot {
             return;
         }
 
+        // TODO(superwhiskers): make it so this ***doesn't*** panic
         let data = context.data.read();
         let mut database = match data.get::<types::Database>() {
             Some(database) => database.get().expect("unable to retrieve connection from the connection pool (this shouldnt've timed out)"),
             None => panic!("the database wasn't initialized and placed into the data TypeMap (this is a severe bug)"),
         };
 
-        debug!("checking if the message was sent inside of a mirror channel");
-        match database.sismember::<&str, u64, u64>("channels", *message.channel_id.as_u64()) {
+        match database.sismember::<&str, u64, u8>("channels", *message.channel_id.as_u64()) {
             Ok(mirror_chan) => {
                 if mirror_chan == 0 {
                     return;
@@ -60,8 +60,7 @@ impl EventHandler for Handler {
             }
         }
 
-        debug!("checking if the user who sent the message is banned");
-        match database.sismember::<&str, u64, u64>("banned", *message.author.id.as_u64()) {
+        match database.sismember::<&str, u64, u8>("banned", *message.author.id.as_u64()) {
             Ok(banned) => {
                 if banned == 1 {
                     return;
@@ -74,7 +73,7 @@ impl EventHandler for Handler {
         }
 
         let mut content = message.author.tag();
-        match database.sismember::<&str, u64, u64>("admins", *message.author.id.as_u64()) {
+        match database.sismember::<&str, u64, u8>("admins", *message.author.id.as_u64()) {
             Ok(admin) => {
                 if admin == 1 {
                     content.push_str(" **(__admin__)**: ");
