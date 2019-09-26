@@ -6,4 +6,3 @@ pub const ACCENT: Colour = Colour::from_rgb(255, 255, 255);
 
 pub const WARNING: Colour = Colour::from_rgb(255, 255, 255);
 pub const ERROR: Colour = Colour::from_rgb(255, 255, 255);
-
