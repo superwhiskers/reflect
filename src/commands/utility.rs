@@ -199,7 +199,7 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                 })?;
             } else {
                 status_message.edit(&context, |m| {
-                    m.content("Your server had no mirror channel to disable")
+                    m.content("Your server has no mirror channel to disable")
                 })?;
             }
         }
