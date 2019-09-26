@@ -193,7 +193,7 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
 
                 status_message.edit(&context, |m| {
                     m.content(format!(
-                        "Disabled your server's mirror channel at {}",
+                        "Disabled your server's mirror channel at <#{}>",
                         channel,
                     ))
                 })?;
