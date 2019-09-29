@@ -17,14 +17,14 @@ group!({
     options: {
         description: "General commands for doing things with the bot",
     },
-    commands: [setup, disable],
+    commands: [enable, disable],
 });
 
 #[command]
-#[description = "Sets up the mirror channel in the server"]
+#[description = "Enables a mirror channel in the server"]
 #[only_in(guilds)]
 #[required_permissions(ADMINISTRATOR)]
-pub fn setup(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
+pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
     // figure out which channel the caller wants us to convert into a mirror channel
     let channel_id;
     match arguments.is_empty() {
@@ -55,7 +55,7 @@ pub fn setup(context: &mut Context, message: &Message, arguments: Args) -> Comma
     let mut status_message = message.channel_id.say(
         &context.http,
         format!(
-            "Setting up the mirror channel in this server at <#{}>",
+            "Enabling the mirror channel in this server at <#{}>",
             channel_id.0,
         ),
     )?;
