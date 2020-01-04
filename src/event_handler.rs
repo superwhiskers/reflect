@@ -107,10 +107,16 @@ impl EventHandler for Handler {
             }
         };
 
-        let mut file_data = Vec::with_capacity(message.attachments.len());
-        let mut files = Vec::with_capacity(message.attachments.len());
+        let attachments_count = message.attachments.len();
+        let mut file_data = Vec::with_capacity(attachments_count);
+        let mut files = Vec::with_capacity(attachments_count);
 
-        for i in 0..message.attachments.len() {
+        unsafe {
+            file_data.set_len(attachments_count);
+            files.set_len(attachments_count);
+        }
+
+        for i in 0..attachments_count {
             match message.attachments[i].download() {
                 Ok(data) => file_data[i] = (data, &message.attachments[i].filename),
                 Err(message) => {
@@ -120,7 +126,7 @@ impl EventHandler for Handler {
             }
         }
 
-        for i in 0..file_data.len() {
+        for i in 0..attachments_count {
             files[i] = AttachmentType::Bytes((
                     &file_data[i].0,
                     file_data[i].1,
