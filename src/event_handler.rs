@@ -7,6 +7,7 @@ use serenity::{
     model::id::ChannelId,
     prelude::*,
 };
+use std::default::Default;
 
 use crate::types;
 
@@ -108,13 +109,11 @@ impl EventHandler for Handler {
         };
 
         let attachments_count = message.attachments.len();
-        let mut file_data = Vec::with_capacity(attachments_count);
+        let mut file_data: Vec<(Vec<u8>, &str)> = Vec::with_capacity(attachments_count);
         let mut files = Vec::with_capacity(attachments_count);
 
-        unsafe {
-            file_data.set_len(attachments_count);
-            files.set_len(attachments_count);
-        }
+        file_data.resize_with(attachments_count, Default::default);
+        files.resize(attachments_count, AttachmentType::Bytes((&[], "")));
 
         for i in 0..attachments_count {
             match message.attachments[i].download() {
