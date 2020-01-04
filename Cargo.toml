@@ -17,4 +17,4 @@ chrono = "0.4"
 typemap = "0.3"
 rmp-serde = "0.14"
 r2d2_redis = "0.11"
-reqwest = { version =  "0.9", features = ["rustls-tls"], default-features = false }
+# reqwest = { version =  "0.9", features = ["rustls-tls"], default-features = false }

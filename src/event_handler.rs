@@ -1,6 +1,5 @@
 use log::{debug, error, info};
 use r2d2_redis::redis::Commands;
-use reqwest;
 use serenity::{
     http::AttachmentType,
     model::channel::Message,
@@ -8,7 +7,6 @@ use serenity::{
     model::id::ChannelId,
     prelude::*,
 };
-use std::io::Read;
 
 use crate::types;
 
@@ -45,10 +43,14 @@ impl EventHandler for Handler {
             return;
         }
 
-        // TODO(superwhiskers): make it so this ***doesn't*** panic
         let data = context.data.read();
         let mut database = match data.get::<types::Database>() {
-            Some(database) => database.get().expect("unable to retrieve connection from the connection pool (this shouldnt've timed out)"),
+            Some(database) => loop {
+                    match database.get() {
+                        Ok(handle) => break handle,
+                        Err(_) => continue,
+                    }
+                },
             None => panic!("the database wasn't initialized and placed into the data TypeMap (this is a severe bug)"),
         };
 
@@ -105,23 +107,24 @@ impl EventHandler for Handler {
             }
         };
 
-        // TODO(superwhiskers): make this handle multiple attachments later. this is so *extremely
-        // hacky* it hurts me to look at it
-        let mut file = Vec::new();
-        let mut files = Vec::new();
-        if !message.attachments.is_empty() {
-            // TODO(superwhiskers): fix this to not panic on error, and actually handle it
-            // correctly
-            reqwest::get(reqwest::Url::parse(message.attachments[0].url.as_str()).unwrap())
-                .unwrap()
-                .read_to_end(&mut file)
-                .unwrap();
-            files = vec![AttachmentType::Bytes((
-                file.as_slice(),
-                message.attachments[0].filename.as_str(),
-            ))];
-        } else {
-            drop(file);
+        let mut file_data = Vec::with_capacity(message.attachments.len());
+        let mut files = Vec::with_capacity(message.attachments.len());
+
+        for i in 0..message.attachments.len() {
+            match message.attachments[i].download() {
+                Ok(data) => file_data[i] = (data, &message.attachments[i].filename),
+                Err(message) => {
+                    error!("unable to download attachment from discord: {:?}", message);
+                    return;
+                },
+            }
+        }
+
+        for i in 0..file_data.len() {
+            files[i] = AttachmentType::Bytes((
+                    &file_data[i].0,
+                    file_data[i].1,
+            ))
         }
 
         for channel in channel_iterator {
@@ -131,8 +134,6 @@ impl EventHandler for Handler {
             }
             if let Err(message) = channel.send_message(&context.http, |m| {
                 m.content(&content).files(files.clone())
-                // TODO(superwhiskers): this is horribly inefficient, but with the way serenity
-                // handles attachments, there is *literally* no other way
             }) {
                 error!("unable to mirror message to discord: {:?}", message);
             }
