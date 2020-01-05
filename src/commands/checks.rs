@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::debug;
 use r2d2_redis::redis::Commands;
 use serenity::{
     framework::standard::{macros::check, Args, CheckResult, CommandOptions},

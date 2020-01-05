@@ -1,5 +1,5 @@
 use log::{debug, error};
-use r2d2_redis::redis::{self, Commands};
+use r2d2_redis::redis::Commands;
 use serenity::{
     framework::standard::{
         macros::{command, group},
