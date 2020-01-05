@@ -9,7 +9,7 @@ use serenity::{
 };
 use std::default::Default;
 
-use crate::types;
+use crate::{get_db_handle, types};
 
 pub struct Handler;
 impl EventHandler for Handler {
@@ -44,20 +44,11 @@ impl EventHandler for Handler {
             return;
         }
 
-        let data = context.data.read();
-        let mut database = match data.get::<types::Database>() {
-            Some(database) => loop {
-                    match database.get() {
-                        Ok(handle) => break handle,
-                        Err(_) => continue,
-                    }
-                },
-            None => panic!("the database wasn't initialized and placed into the data TypeMap (this is a severe bug)"),
-        };
+        let mut database = get_db_handle!(context.data.read());
 
-        match database.sismember::<&str, u64, u8>("channels", *message.channel_id.as_u64()) {
+        match database.sismember::<&str, u64, bool>("channels", message.channel_id.0) {
             Ok(mirror_chan) => {
-                if mirror_chan == 0 {
+                if !mirror_chan {
                     return;
                 }
             }
@@ -67,9 +58,9 @@ impl EventHandler for Handler {
             }
         }
 
-        match database.sismember::<&str, u64, u8>("banned", *message.author.id.as_u64()) {
+        match database.sismember::<&str, u64, bool>("banned", message.author.id.0) {
             Ok(banned) => {
-                if banned == 1 {
+                if banned {
                     return;
                 }
             }
@@ -80,9 +71,9 @@ impl EventHandler for Handler {
         }
 
         let mut content = message.author.tag();
-        match database.sismember::<&str, u64, u8>("admins", *message.author.id.as_u64()) {
+        match database.sismember::<&str, u64, bool>("admins", message.author.id.0) {
             Ok(admin) => {
-                if admin == 1 {
+                if admin {
                     content.push_str(" **(__admin__)**: ");
                 } else {
                     content.push_str(": ");
@@ -121,15 +112,12 @@ impl EventHandler for Handler {
                 Err(message) => {
                     error!("unable to download attachment from discord: {:?}", message);
                     return;
-                },
+                }
             }
         }
 
         for i in 0..attachments_count {
-            files[i] = AttachmentType::Bytes((
-                    &file_data[i].0,
-                    file_data[i].1,
-            ))
+            files[i] = AttachmentType::Bytes((&file_data[i].0, file_data[i].1))
         }
 
         for channel in channel_iterator {
@@ -137,9 +125,9 @@ impl EventHandler for Handler {
             if channel == message.channel_id {
                 continue;
             }
-            if let Err(message) = channel.send_message(&context.http, |m| {
-                m.content(&content).files(files.clone())
-            }) {
+            if let Err(message) =
+                channel.send_message(&context.http, |m| m.content(&content).files(files.clone()))
+            {
                 error!("unable to mirror message to discord: {:?}", message);
             }
         }

@@ -60,7 +60,6 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
         ),
     )?;
 
-    // get a database connection
     let mut database = get_db_handle!(context.data.read());
 
     // the guild id is needed in a lot of places. predefine it instead of unwrapping each time we
@@ -100,7 +99,7 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
     }
 
     // update the guild's top-level hash
-    match database.hset::<u64, &str, u64, u8>(guild_id, "mirror_channel", channel_id.0) {
+    match database.hset::<u64, &str, u64, bool>(guild_id, "mirror_channel", channel_id.0) {
         Ok(_) => (),
         Err(message) => {
             error!(
@@ -112,7 +111,7 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
     }
 
     // update the channel set
-    match database.sadd::<&str, u64, u8>("channels", channel_id.0) {
+    match database.sadd::<&str, u64, bool>("channels", channel_id.0) {
         Ok(_) => (),
         Err(message) => {
             error!(
@@ -160,7 +159,7 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                 );
 
                 // remove the channel from the channels set
-                match database.srem::<&str, u64, u8>("channels", channel) {
+                match database.srem::<&str, u64, bool>("channels", channel) {
                     Ok(_) => (),
                     Err(message) => {
                         error!("unable to disable an existing miror channel from the messages set: {:?}", message);

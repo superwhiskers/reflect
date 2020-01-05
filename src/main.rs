@@ -14,6 +14,9 @@ mod event_handler;
 mod logger;
 mod types;
 
+#[macro_use]
+mod macros;
+
 fn main() {
     let mut config: types::Configuration = ron::de::from_str(
         fs::read_to_string("config.ron")
@@ -77,7 +80,8 @@ fn main() {
         StandardFramework::new()
             .configure(|c| c.prefix(&config.prefix.as_str().clone()).owners(admins))
             .help(&commands::help::HELP)
-            .group(&commands::utility::UTILITY_GROUP),
+            .group(&commands::utility::UTILITY_GROUP)
+            .group(&commands::moderation::MODERATION_GROUP),
     );
 
     {
