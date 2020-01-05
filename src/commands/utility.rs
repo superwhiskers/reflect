@@ -10,7 +10,7 @@ use serenity::{
 };
 use std::str::FromStr;
 
-use crate::types;
+use crate::get_db_handle;
 
 group!({
     name: "Utility",
@@ -61,11 +61,7 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
     )?;
 
     // get a database connection
-    let data = context.data.read();
-    let mut database = match data.get::<types::Database>() {
-        Some(database) => database.get()?,
-        None => panic!("the database wasn't initialized and placed into the data TypeMap (this is a severe bug)"),
-    };
+    let mut database = get_db_handle!(context.data.read());
 
     // the guild id is needed in a lot of places. predefine it instead of unwrapping each time we
     // need it
@@ -149,11 +145,7 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
         .say(&context.http, "Disabling your server's mirror channel")?;
 
     // get a database connection
-    let data = context.data.read();
-    let mut database = match data.get::<types::Database>() {
-        Some(database) => database.get()?,
-        None => panic!("the database wasn't initialized and placed into the data TypeMap (this is a severe bug)"),
-    };
+    let mut database = get_db_handle!(context.data.read());
 
     // the guild id is needed in a lot of places. predefine it instead of unwrapping each time we
     // need it
