@@ -22,7 +22,7 @@ impl EventHandler for Handler {
         );
         let data = context.data.read();
         let prefix = match data.get::<types::Configuration>() {
-            Some(config) => &config.prefix,
+            Some(cfg) => &cfg.prefix,
             None => panic!(
                 "no configuration was stored inside of the data TypeMap (this is a severe bug)"
             ),
@@ -52,8 +52,8 @@ impl EventHandler for Handler {
                     return;
                 }
             }
-            Err(message) => {
-                error!("unable to check if the recieved message was sent inside of a mirror channel: {:?}", message);
+            Err(msg) => {
+                error!("unable to check if the recieved message was sent inside of a mirror channel: {:?}", msg);
                 return;
             }
         }
@@ -64,8 +64,8 @@ impl EventHandler for Handler {
                     return;
                 }
             }
-            Err(message) => {
-                error!("unable to check if a user is banned: {:?}", message);
+            Err(msg) => {
+                error!("unable to check if a user is banned: {:?}", msg);
                 return;
             }
         }
@@ -79,10 +79,10 @@ impl EventHandler for Handler {
                     content.push_str(": ");
                 }
             }
-            Err(message) => {
+            Err(msg) => {
                 error!(
                     "unable to check if a user is an admin. assuming they are not: {:?}",
-                    message
+                    msg
                 );
                 content.push_str(": ");
             }
@@ -93,8 +93,8 @@ impl EventHandler for Handler {
         debug!("mirroring message");
         let channel_iterator = match database.sscan::<&str, u64>("channels") {
             Ok(iter) => iter,
-            Err(message) => {
-                error!("unable to iterate over the mirror channels: {:?}", message);
+            Err(msg) => {
+                error!("unable to iterate over the mirror channels: {:?}", msg);
                 return;
             }
         };
@@ -109,8 +109,8 @@ impl EventHandler for Handler {
         for i in 0..attachments_count {
             match message.attachments[i].download() {
                 Ok(data) => file_data[i] = (data, &message.attachments[i].filename),
-                Err(message) => {
-                    error!("unable to download attachment from discord: {:?}", message);
+                Err(msg) => {
+                    error!("unable to download attachment from discord: {:?}", msg);
                     return;
                 }
             }
@@ -125,10 +125,10 @@ impl EventHandler for Handler {
             if channel == message.channel_id {
                 continue;
             }
-            if let Err(message) =
+            if let Err(msg) =
                 channel.send_message(&context.http, |m| m.content(&content).files(files.clone()))
             {
-                error!("unable to mirror message to discord: {:?}", message);
+                error!("unable to mirror message to discord: {:?}", msg);
             }
         }
     }

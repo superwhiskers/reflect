@@ -25,3 +25,13 @@ macro_rules! get_db_handle {
         }
     };
 }
+
+/// simplify sending an error message in the command's channel
+#[macro_export]
+macro_rules! say_error {
+    ($message:ident, $context:ident, $content:expr) => {
+        $message
+            .channel_id
+            .say(&$context.http, format!("**Error:** {}", $content))?;
+    };
+}

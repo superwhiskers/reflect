@@ -13,6 +13,7 @@ mod defaults;
 mod event_handler;
 mod logger;
 mod types;
+mod utils;
 
 #[macro_use]
 mod macros;
@@ -29,8 +30,8 @@ fn main() {
 
     // convert the vector into a HashSet if needed
     let mut admins = HashSet::new();
-    if let Some(admin_ids) = &config.admins {
-        for id in admin_ids.iter() {
+    if let Some(ids) = &config.admins {
+        for id in ids.iter() {
             admins.insert(UserId(*id));
         }
     }
@@ -72,7 +73,7 @@ fn main() {
             .sadd::<&str, Vec<u64>, u64>("admins", config.admins.as_ref().unwrap().clone())
         {
             Ok(_) => (),
-            Err(message) => panic!("unable to load admin hashset into redis: {:?}", message),
+            Err(msg) => panic!("unable to load admin hashset into redis: {:?}", msg),
         }
     }
 
@@ -94,7 +95,7 @@ fn main() {
 
     // TODO(superwhiskers): implement sharding support and then switch this to be
     // "start_autosharded"
-    if let Err(message) = client.start() {
-        error!("client exited: {:?}", message);
+    if let Err(msg) = client.start() {
+        error!("client exited: {:?}", msg);
     }
 }
