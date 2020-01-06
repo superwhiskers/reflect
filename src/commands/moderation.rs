@@ -9,7 +9,7 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{commands::checks::ADMIN_CHECK, get_db_handle};
+use crate::{commands::checks::ADMIN_CHECK, get_db_handle, say_error, utils::resolve_user};
 
 group!({
     name: "Moderation",
@@ -19,44 +19,18 @@ group!({
     commands: [ban, unban],
 });
 
-// TODO(superwhiskers): consider moving the user id grabbing into a macro
-
 #[command]
 #[description = "Bans a user from the global mirror channel"]
 #[only_in(guilds)]
 #[checks(Admin)]
 pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
-    // TODO(superwhiskers): fully implement after adding usercache stuff
-    let user_id;
-    match arguments.is_empty() {
-        true => {
-            message
-                .channel_id
-                .say(&context.http, "**Error:** No user was provided to ban")?;
+    let user_id = match resolve_user(context, message, arguments) {
+        Ok(id) => id,
+        Err(msg) => {
+            say_error!(message, context, msg);
             return Ok(());
         }
-        false => match arguments.parse::<u64>() {
-            Ok(parsed_user_id) => user_id = parsed_user_id,
-            Err(_) => match arguments.parse::<String>() {
-                Ok(parsed_user_mention) => match parsed_user_mention
-                    .trim_end_matches('>')
-                    .trim_start_matches("<@")
-                    .trim_start_matches("!")
-                    .parse::<u64>()
-                {
-                    Ok(parsed_user_id) => user_id = parsed_user_id,
-                    Err(_) => {
-                        message.channel_id.say(&context.http, "**Error:** Usercache support has not been implemented yet. Unable to retrieve user id from provided argument")?;
-                        return Ok(());
-                    }
-                },
-                Err(_) => {
-                    message.channel_id.say(&context.http, "**Error:** Usercache support has not been implemented yet. Unable to retrieve user id from provided argument")?;
-                    return Ok(());
-                }
-            },
-        },
-    }
+    };
 
     debug!("banning user id {} from the global mirror channel", user_id);
 
@@ -66,17 +40,16 @@ pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> Command
     match database.sismember::<&str, u64, bool>("admins", user_id) {
         Ok(admin) => {
             if admin {
-                message
-                    .channel_id
-                    .say(&context.http, "**Error:** You cannot ban an admin!")?;
+                say_error!(message, context, "You cannot ban an admin!");
                 return Ok(());
             }
         }
-        Err(message) => {
+        Err(msg) => {
             error!(
                 "unable to check if the provided user id is of an admin: {:?}",
-                message
+                msg
             );
+            say_error!(message, context, "Unable to check if the user is an admin!");
             return Ok(());
         }
     }
@@ -84,10 +57,15 @@ pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> Command
     // ban them
     match database.sadd::<&str, u64, bool>("banned", user_id) {
         Ok(_) => (),
-        Err(message) => {
+        Err(msg) => {
             error!(
-                "unable to update the banned user set to contain a new banned member: {:?}",
-                message
+                "unable to update the banned user set to contain a new banned user: {:?}",
+                msg
+            );
+            say_error!(
+                message,
+                context,
+                "Unable to add the user to the banned users' list!"
             );
             return Ok(());
         }
@@ -110,37 +88,13 @@ pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> Command
 #[only_in(guilds)]
 #[checks(Admin)]
 pub fn unban(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
-    // TODO(superwhiskers): fully implement after adding usercache stuff
-    let user_id;
-    match arguments.is_empty() {
-        true => {
-            message
-                .channel_id
-                .say(&context.http, "**Error:** No user was provided to unban")?;
+    let user_id = match resolve_user(context, message, arguments) {
+        Ok(id) => id,
+        Err(msg) => {
+            say_error!(message, context, msg);
             return Ok(());
         }
-        false => match arguments.parse::<u64>() {
-            Ok(parsed_user_id) => user_id = parsed_user_id,
-            Err(_) => match arguments.parse::<String>() {
-                Ok(parsed_user_mention) => match parsed_user_mention
-                    .trim_end_matches('>')
-                    .trim_start_matches("<@")
-                    .trim_start_matches("!")
-                    .parse::<u64>()
-                {
-                    Ok(parsed_user_id) => user_id = parsed_user_id,
-                    Err(_) => {
-                        message.channel_id.say(&context.http, "**Error:** Usercache support has not been implemented yet. Unable to retrieve user id from provided argument")?;
-                        return Ok(());
-                    }
-                },
-                Err(_) => {
-                    message.channel_id.say(&context.http, "**Error:** Usercache support has not been implemented yet. Unable to retrieve user id from provided argument")?;
-                    return Ok(());
-                }
-            },
-        },
-    }
+    };
 
     debug!(
         "unbanning user id {} from the global mirror channel",
@@ -152,10 +106,15 @@ pub fn unban(context: &mut Context, message: &Message, arguments: Args) -> Comma
     // unban them
     match database.srem::<&str, u64, bool>("banned", user_id) {
         Ok(_) => (),
-        Err(message) => {
+        Err(msg) => {
             error!(
-                "unable to update the banned user set to remove a new banned member: {:?}",
-                message
+                "unable to update the banned user set to remove a new banned user: {:?}",
+                msg
+            );
+            say_error!(
+                message,
+                context,
+                "Unable to remove the user from the banned users' list!"
             );
             return Ok(());
         }
