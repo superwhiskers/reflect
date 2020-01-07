@@ -33,11 +33,10 @@ impl EventHandler for Handler {
     }
 
     fn message(&self, context: Context, message: Message) {
-        debug!(
-            "got a new message from guild {} in channel {}",
-            message.guild_id.unwrap().0,
-            message.channel_id.0
-        );
+        match message.guild_id {
+            Some(id) => debug!("got a new message from guild {} in channel {}", id.0, message.channel_id.0),
+            None => return,
+        }
 
         // ignore bots
         if message.author.bot {

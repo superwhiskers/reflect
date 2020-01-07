@@ -15,7 +15,7 @@ pub fn resolve_user(
     }
 
     match arguments.is_empty() {
-        true => Err("No user was provided"),
+        true => Err("No user was provided!"),
         false => match arguments.parse::<u64>() {
             Ok(parsed_user_id) => Ok(parsed_user_id),
             Err(_) => match arguments.parse::<String>() {
