@@ -7,7 +7,7 @@ use serenity::{
     model::id::ChannelId,
     prelude::*,
 };
-use std::default::Default;
+use std::borrow::Cow;
 
 use crate::{get_db_handle, types};
 
@@ -34,7 +34,10 @@ impl EventHandler for Handler {
 
     fn message(&self, context: Context, message: Message) {
         match message.guild_id {
-            Some(id) => debug!("got a new message from guild {} in channel {}", id.0, message.channel_id.0),
+            Some(id) => debug!(
+                "got a new message from guild {} in channel {}",
+                id.0, message.channel_id.0
+            ),
             None => return,
         }
 
@@ -99,24 +102,19 @@ impl EventHandler for Handler {
         };
 
         let attachments_count = message.attachments.len();
-        let mut file_data: Vec<(Vec<u8>, &str)> = Vec::with_capacity(attachments_count);
-        let mut files = Vec::with_capacity(attachments_count);
-
-        file_data.resize_with(attachments_count, Default::default);
-        files.resize(attachments_count, AttachmentType::Bytes((&[], "")));
+        let mut files: Vec<AttachmentType> = Vec::with_capacity(attachments_count);
 
         for i in 0..attachments_count {
             match message.attachments[i].download() {
-                Ok(data) => file_data[i] = (data, &message.attachments[i].filename),
+                Ok(data) => files.push(AttachmentType::Bytes {
+                    data: Cow::Owned(data),
+                    filename: message.attachments[i].filename.clone(),
+                }),
                 Err(msg) => {
                     error!("unable to download attachment from discord: {:?}", msg);
                     return;
                 }
             }
-        }
-
-        for i in 0..attachments_count {
-            files[i] = AttachmentType::Bytes((&file_data[i].0, file_data[i].1))
         }
 
         for channel in channel_iterator {
@@ -125,7 +123,11 @@ impl EventHandler for Handler {
                 continue;
             }
             if let Err(msg) =
-                channel.send_message(&context.http, |m| m.content(&content).files(files.clone()))
+                channel.send_message(&context.http, |m| {
+                    m.content(&content);
+                    m.2 = files.clone();
+                    m
+                })
             {
                 error!("unable to mirror message to discord: {:?}", msg);
             }

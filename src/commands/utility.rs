@@ -12,13 +12,10 @@ use std::str::FromStr;
 
 use crate::{get_db_handle, say_error};
 
-group!({
-    name: "Utility",
-    options: {
-        description: "General commands for doing things with the bot",
-    },
-    commands: [enable, disable],
-});
+#[group]
+#[description = "General commands for doing things with the bot"]
+#[commands(enable, disable)]
+pub struct Utility;
 
 #[command]
 #[description = "Enables a mirror channel in the server"]

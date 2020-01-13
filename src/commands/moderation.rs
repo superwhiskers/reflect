@@ -11,13 +11,10 @@ use serenity::{
 
 use crate::{commands::checks::ADMIN_CHECK, get_db_handle, say_error, utils::resolve_user};
 
-group!({
-    name: "Moderation",
-    options: {
-        description: "Commands used to moderate the mirror channel",
-    },
-    commands: [ban, unban],
-});
+#[group]
+#[description = "Commands used to moderate the mirror channel"]
+#[commands(ban, unban)]
+pub struct Moderation;
 
 #[command]
 #[description = "Bans a user from the global mirror channel"]
