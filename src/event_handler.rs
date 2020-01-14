@@ -101,14 +101,13 @@ impl EventHandler for Handler {
             }
         };
 
-        let attachments_count = message.attachments.len();
-        let mut files: Vec<AttachmentType> = Vec::with_capacity(attachments_count);
+        let mut files: Vec<AttachmentType> = Vec::with_capacity(message.attachments.len());
 
-        for i in 0..attachments_count {
-            match message.attachments[i].download() {
+        for attachment in message.attachments {
+            match attachment.download() {
                 Ok(data) => files.push(AttachmentType::Bytes {
                     data: Cow::Owned(data),
-                    filename: message.attachments[i].filename.clone(),
+                    filename: attachment.filename.clone(),
                 }),
                 Err(msg) => {
                     error!("unable to download attachment from discord: {:?}", msg);
