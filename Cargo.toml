@@ -3,6 +3,7 @@ name = "reflect"
 version = "0.1.0"
 authors = ["superwhiskers <whiskerdev@protonmail.com>"]
 edition = "2018"
+license = "AGPL-3.0"
 
 [profile.release]
 lto = true
