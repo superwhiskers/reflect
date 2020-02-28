@@ -114,13 +114,7 @@ impl EventHandler for Handler {
             }
         }
 
-        let mut content = if let Cow::Owned(content) = display_name.to_owned() {
-            content
-        } else {
-            // this will never happen since we convert it to an owned value before
-            // destructuring
-            unreachable!()
-        };
+        let mut content = display_name.to_string();
         match database.sismember::<&str, u64, bool>("admins", message.author.id.0) {
             Ok(admin) => {
                 if admin {
