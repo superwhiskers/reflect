@@ -47,12 +47,14 @@ pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> Command
                     context,
                     "Usercache listing is not implemented yet!"
                 );
+                return Ok(());
             } else if ids.len() == 0 {
                 say_error!(
                     message,
                     context,
                     "No user could be found!"
                 );
+                return Ok(());
             }
             ids[0]
         }
@@ -126,12 +128,14 @@ pub fn unban(context: &mut Context, message: &Message, arguments: Args) -> Comma
                     context,
                     "Usercache listing is not implemented yet!"
                 );
+                return Ok(());
             } else if ids.len() == 0 {
                 say_error!(
                     message,
                     context,
                     "No user could be found!"
                 );
+                return Ok(());
             }
             ids[0]
         }
