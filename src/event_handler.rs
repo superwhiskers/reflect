@@ -103,12 +103,8 @@ impl EventHandler for Handler {
         let mut key = String::from("usercache-");
         key.push_str(&display_name);
 
-        match database.sadd::<&str, u64, bool>(&key, message.author.id.0) {
-            Ok(result) => {
-                if !result {
-                    error!("unable to submit user id to the usercache!")
-                }
-            }
+        match database.sadd::<&str, u64, ()>(&key, message.author.id.0) {
+            Ok(_) => (),
             Err(msg) => {
                 error!("unable to submit uder id to the usercache: {:?}", msg);
             }
