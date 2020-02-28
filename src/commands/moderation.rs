@@ -40,7 +40,16 @@ pub struct Moderation;
 #[checks(Admin)]
 pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
     let user_id = match resolve_user(context, message, arguments) {
-        Ok(id) => id,
+        Ok(ids) => {
+            if ids.len() > 1 {
+                say_error!(
+                    message,
+                    context,
+                    "Usercache listing is not implemented yet!"
+                );
+            }
+            ids[0]
+        }
         Err(msg) => {
             say_error!(message, context, msg);
             return Ok(());
@@ -104,7 +113,16 @@ pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> Command
 #[checks(Admin)]
 pub fn unban(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
     let user_id = match resolve_user(context, message, arguments) {
-        Ok(id) => id,
+        Ok(ids) => {
+            if ids.len() > 1 {
+                say_error!(
+                    message,
+                    context,
+                    "Usercache listing is not implemented yet!"
+                );
+            }
+            ids[0]
+        }
         Err(msg) => {
             say_error!(message, context, msg);
             return Ok(());

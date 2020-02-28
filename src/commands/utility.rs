@@ -54,12 +54,20 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
                 ) {
                     Ok(parsed_channel_id) => channel_id = parsed_channel_id,
                     Err(_) => {
-                        say_error!(message, context, "Unable to parse the provided argument to a channel id!");
+                        say_error!(
+                            message,
+                            context,
+                            "Unable to parse the provided argument to a channel id!"
+                        );
                         return Ok(());
                     }
                 },
                 Err(_) => {
-                    say_error!(message, context, "Unable to parse the provided argument to a channel id!");
+                    say_error!(
+                        message,
+                        context,
+                        "Unable to parse the provided argument to a channel id!"
+                    );
                     return Ok(());
                 }
             },
@@ -99,7 +107,11 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
                     Ok(_) => (),
                     Err(msg) => {
                         error!("unable to remove an existing miror channel from the messages set: {:?}", msg);
-                        say_error!(message, context, "Unable to remove the existing mirror channel from the channels set!");
+                        say_error!(
+                            message,
+                            context,
+                            "Unable to remove the existing mirror channel from the channels set!"
+                        );
                         return Ok(());
                     }
                 }
@@ -110,7 +122,11 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
                 "unable to check for an existing mirror channel in a guild: {:?}",
                 msg
             );
-            say_error!(message, context, "Unable to check for an existing mirror channel!");
+            say_error!(
+                message,
+                context,
+                "Unable to check for an existing mirror channel!"
+            );
             return Ok(());
         }
     }
@@ -123,7 +139,11 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
                 "unable to update the guild hash to reflect the new mirror channel: {:?}",
                 msg
             );
-            say_error!(message, context, "Unable to update the channel id in the guild hash!");
+            say_error!(
+                message,
+                context,
+                "Unable to update the channel id in the guild hash!"
+            );
             return Ok(());
         }
     }
@@ -136,7 +156,11 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
                 "unable to update the channel set to contain the new mirror channel: {:?}",
                 msg
             );
-            say_error!(message, context, "Unable to update the channel id in the channel set!");
+            say_error!(
+                message,
+                context,
+                "Unable to update the channel id in the channel set!"
+            );
             return Ok(());
         }
     }
@@ -172,17 +196,18 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
     match database.hget::<u64, &str, Option<u64>>(guild_id, "mirror_channel") {
         Ok(chan) => {
             if let Some(chan) = chan {
-                debug!(
-                    "found a mirror channel for guild {} at {}",
-                    guild_id, chan
-                );
+                debug!("found a mirror channel for guild {} at {}", guild_id, chan);
 
                 // remove the channel from the channels set
                 match database.srem::<&str, u64, bool>("channels", chan) {
                     Ok(_) => (),
                     Err(msg) => {
                         error!("unable to disable an existing miror channel from the channels set: {:?}", msg);
-                        say_error!(message, context, "Unable to remove the channel id from the channels set!");
+                        say_error!(
+                            message,
+                            context,
+                            "Unable to remove the channel id from the channels set!"
+                        );
                         return Ok(());
                     }
                 }
@@ -198,7 +223,11 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                             "unable to remove the guild {}'s top-level hash from redis: {:?}",
                             guild_id, msg
                         );
-                        say_error!(message, context, "Unable to remove the channel id from the guild hash!");
+                        say_error!(
+                            message,
+                            context,
+                            "Unable to remove the channel id from the guild hash!"
+                        );
                         return Ok(());
                     }
                 }
@@ -220,7 +249,11 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                 "unable to check for an existing mirror channel in a guild: {:?}",
                 msg
             );
-            say_error!(message, context, "Unable to check for an existing mirror channel!");
+            say_error!(
+                message,
+                context,
+                "Unable to check for an existing mirror channel!"
+            );
             return Ok(());
         }
     }

@@ -65,6 +65,15 @@ impl EventHandler for Handler {
         }
 
         let mut database = get_db_handle!(context.data.read());
+        let member = match context
+            .http
+            .get_member(message.guild_id.unwrap().0, message.author.id.0) {
+                Ok(member) => member,
+                Err(msg) => {
+                    error!("unable to get the guild member who sent the message: {:?}", msg);
+                    return;
+                }
+        };
 
         match database.sismember::<&str, u64, bool>("channels", message.channel_id.0) {
             Ok(mirror_chan) => {
@@ -90,7 +99,28 @@ impl EventHandler for Handler {
             }
         }
 
-        let mut content = message.author.tag();
+        let display_name = member.display_name();
+        let mut key = String::from("usercache-");
+        key.push_str(&display_name);
+
+        match database.sadd::<&str, u64, bool>(&key, message.author.id.0) {
+            Ok(result) => {
+                if !result {
+                    error!("unable to submit user id to the usercache!")
+                }
+            }
+            Err(msg) => {
+                error!("unable to submit uder id to the usercache: {:?}", msg);
+            }
+        }
+
+        let mut content = if let Cow::Owned(content) = display_name.to_owned() {
+            content
+        } else {
+            // this will never happen since we convert it to an owned value before
+            // destructuring
+            unreachable!()
+        };
         match database.sismember::<&str, u64, bool>("admins", message.author.id.0) {
             Ok(admin) => {
                 if admin {
@@ -139,13 +169,11 @@ impl EventHandler for Handler {
             if channel == message.channel_id {
                 continue;
             }
-            if let Err(msg) =
-                channel.send_message(&context.http, |m| {
-                    m.content(&content);
-                    m.2 = files.clone();
-                    m
-                })
-            {
+            if let Err(msg) = channel.send_message(&context.http, |m| {
+                m.content(&content);
+                m.2 = files.clone();
+                m
+            }) {
                 error!("unable to mirror message to discord: {:?}", msg);
             }
         }
