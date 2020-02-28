@@ -25,11 +25,7 @@ fn usercache_lookup(context: &mut Context, _: &Message, arguments: Args) -> Resu
     let mut database = get_db_handle!(context.data.read());
 
     let mut key = String::from("usercache-");
-    let parsed_username = match arguments.parse::<String>() {
-        Ok(parsed_username) => parsed_username,
-        Err(_) => return Err("Unable to lookup the provided user!"),
-    };
-    key.push_str(&parsed_username);
+    key.push_str(arguments.message());
 
     match database.smembers::<&str, Vec<u64>>(&key) {
         Ok(cache) => return Ok(cache),
