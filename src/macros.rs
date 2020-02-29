@@ -48,8 +48,40 @@ macro_rules! get_db_handle {
 #[macro_export]
 macro_rules! say_error {
     ($message:ident, $context:ident, $content:expr) => {
-        $message
-            .channel_id
-            .say(&$context.http, format!("**Error:** {}", $content))?;
+        $message.channel_id.send_message(&$context.http, |m| {
+            m.embed(|e| {
+                e.title("Error")
+                    .description($content)
+                    .color($crate::colors::ERROR)
+            })
+        })?;
+    };
+}
+
+/// simplify showing warning messages in the command's channel
+#[macro_export]
+macro_rules! say_warning {
+    ($message:ident, $context:ident, $content:expr) => {
+        $message.channel_id.send_message(&context.http, |m| {
+            m.embed(|e| {
+                e.title("Warning")
+                    .description($content)
+                    .color($crate::colors::WARNING)
+            })
+        })?;
+    };
+}
+
+/// simplify showing information mesages in the command's channel
+#[macro_export]
+macro_rules! say {
+    ($message:ident, $context:ident, $title:expr, $content:expr) => {
+        $message.channel_id.send_message(&context.http, |m| {
+            m.embed(|e| {
+                e.title($title)
+                    .description($content)
+                    .color($crate::colors::PRIMARY)
+            })
+        })?;
     };
 }

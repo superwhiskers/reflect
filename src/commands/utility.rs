@@ -23,17 +23,77 @@ use serenity::{
         macros::{command, group},
         Args, CommandResult,
     },
-    model::{channel::Message, id::ChannelId},
+    model::{
+        channel::Message,
+        id::{ChannelId, UserId},
+    },
     prelude::*,
 };
 use std::str::FromStr;
 
-use crate::{get_db_handle, say_error};
+use crate::{colors, get_db_handle, say_error, utils::resolve_user};
 
 #[group]
 #[description = "General commands for doing things with the bot"]
-#[commands(enable, disable)]
+#[commands(enable, disable, user)]
 pub struct Utility;
+
+#[command]
+#[description = "Look up information about a user"]
+pub fn user(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
+    debug!("looking up user information");
+
+    let user = match if arguments.len() == 0 {
+        message.author.id
+    } else {
+        UserId(match resolve_user(context, message, arguments) {
+            Ok(ids) => {
+                if ids.len() > 1 {
+                    say_error!(
+                        message,
+                        context,
+                        "Usercache listing is not implemented yet!"
+                    );
+                    return Ok(());
+                } else if ids.len() == 0 {
+                    say_error!(message, context, "No user could be found!");
+                    return Ok(());
+                }
+                ids[0]
+            }
+            Err(msg) => {
+                say_error!(message, context, msg);
+                return Ok(());
+            }
+        })
+    }
+    .to_user(&context)
+    {
+        Ok(user) => user,
+        Err(msg) => {
+            error!("unable to convert userid -> user: {}", msg);
+            say_error!(message, context, "Unable to get the provided user!");
+            return Ok(());
+        }
+    };
+
+    debug!("got user to look up: {:?}", user);
+
+    message.channel_id.send_message(&context.http, |m| {
+        m.embed(|e| {
+            e.title(user.tag())
+                .description(format!("Showing user information for {}", user.name))
+                .thumbnail(user.face())
+                .fields(vec![
+                    ("Information", format!("**ID:** {}\n**Bot:** {}\n", user.id.0, user.bot), false),
+                    ("Mirror Channel Servers", String::from("Unimplemented"), false),
+                ])
+                .color(colors::PRIMARY)
+        })
+    })?;
+
+    Ok(())
+}
 
 #[command]
 #[description = "Enables a mirror channel in the server"]
@@ -75,13 +135,16 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
     }
 
     // send the initial status message
-    let mut status_message = message.channel_id.say(
-        &context.http,
-        format!(
-            "Enabling the mirror channel in this server at <#{}>",
-            channel_id.0,
-        ),
-    )?;
+    let mut status_message = message.channel_id.send_message(&context.http, |m| {
+        m.embed(|e| {
+            e.title("Enabling")
+                .description(format!(
+                    "Enabling the mirror channel in this server at <#{}>",
+                    channel_id.0
+                ))
+                .color(colors::PRIMARY)
+        })
+    })?;
 
     let mut database = get_db_handle!(context.data.read());
 
@@ -167,10 +230,14 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
 
     // update the status message one last time
     status_message.edit(&context, |m| {
-        m.content(format!(
-            "Finished. Try talking in <#{}> and see if anyone replies!",
-            channel_id.0
-        ))
+        m.embed(|e| {
+            e.title("Enabling")
+                .description(format!(
+                    "Finished. Try talking in <#{}> and see if anyone replies!",
+                    channel_id.0
+                ))
+                .color(colors::PRIMARY)
+        })
     })?;
 
     Ok(())
@@ -182,9 +249,13 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
 #[required_permissions(ADMINISTRATOR)]
 pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
     // send the initial status message
-    let mut status_message = message
-        .channel_id
-        .say(&context.http, "Disabling your server's mirror channel")?;
+    let mut status_message = message.channel_id.send_message(&context.http, |m| {
+        m.embed(|e| {
+            e.title("Disabling")
+                .description("Disabling your server's mirror channel")
+                .color(colors::PRIMARY)
+        })
+    })?;
 
     // get a database connection
     let mut database = get_db_handle!(context.data.read());
@@ -233,10 +304,14 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                 }
 
                 status_message.edit(&context, |m| {
-                    m.content(format!(
-                        "Disabled your server's mirror channel at <#{}>",
-                        chan,
-                    ))
+                    m.embed(|e| {
+                        e.title("Disabling")
+                            .description(format!(
+                                "Disabled your server's mirror channel at <#{}>",
+                                chan
+                            ))
+                            .color(colors::PRIMARY)
+                    })
                 })?;
             } else {
                 status_message.edit(&context, |m| {

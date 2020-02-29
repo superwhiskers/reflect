@@ -67,12 +67,16 @@ impl EventHandler for Handler {
         let mut database = get_db_handle!(context.data.read());
         let member = match context
             .http
-            .get_member(message.guild_id.unwrap().0, message.author.id.0) {
-                Ok(member) => member,
-                Err(msg) => {
-                    error!("unable to get the guild member who sent the message: {:?}", msg);
-                    return;
-                }
+            .get_member(message.guild_id.unwrap().0, message.author.id.0)
+        {
+            Ok(member) => member,
+            Err(msg) => {
+                error!(
+                    "unable to get the guild member who sent the message: {:?}",
+                    msg
+                );
+                return;
+            }
         };
 
         match database.sismember::<&str, u64, bool>("channels", message.channel_id.0) {

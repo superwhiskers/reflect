@@ -16,12 +16,19 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 
+use log::{debug, error};
 use crate::get_db_handle;
 use r2d2_redis::redis::Commands;
 use serenity::{framework::standard::Args, model::channel::Message, prelude::*};
 
 #[inline(always)]
-fn usercache_lookup(context: &mut Context, _: &Message, arguments: Args) -> Result<Vec<u64>, &'static str> {
+fn usercache_lookup(
+    context: &mut Context,
+    _: &Message,
+    arguments: Args,
+) -> Result<Vec<u64>, &'static str> {
+    debug!("performing a usercache lookup of \"{}\"", arguments.message());
+
     let mut database = get_db_handle!(context.data.read());
 
     let mut key = String::from("usercache-");
@@ -29,10 +36,12 @@ fn usercache_lookup(context: &mut Context, _: &Message, arguments: Args) -> Resu
 
     match database.smembers::<&str, Vec<u64>>(&key) {
         Ok(cache) => return Ok(cache),
-        Err(_) => return Err("Unable to lookup the provided user!"),
+        Err(msg) => {
+            error!("failed usercache lookup: {}", msg);
+            return Err("Unable to lookup the provided user!");
+        }
     }
 }
-
 
 /// resolves a user from the arguments passed to a command
 /// returns an error message if something fails
@@ -54,7 +63,7 @@ pub fn resolve_user(
                 {
                     Ok(parsed_user_id) => Ok(vec![parsed_user_id]),
                     Err(_) => usercache_lookup(context, message, arguments),
-                }
+                },
                 Err(_) => usercache_lookup(context, message, arguments),
             },
         },
