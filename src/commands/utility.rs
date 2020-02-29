@@ -24,18 +24,18 @@ use serenity::{
         Args, CommandResult,
     },
     model::{
-        channel::Message,
+        channel::{Message, Channel},
         id::{ChannelId, UserId},
     },
     prelude::*,
 };
 use std::str::FromStr;
 
-use crate::{colors, get_db_handle, say_error, utils::resolve_user};
+use crate::{colors, get_db_handle, say_error, say, commands::checks::ADMIN_CHECK, utils::resolve_user};
 
 #[group]
 #[description = "General commands for doing things with the bot"]
-#[commands(enable, disable, user)]
+#[commands(enable, disable, user, notify)]
 pub struct Utility;
 
 #[command]
@@ -93,6 +93,67 @@ pub fn user(context: &mut Context, message: &Message, arguments: Args) -> Comman
     })?;
 
     Ok(())
+}
+
+#[command]
+#[description = "Broadcast a notification to all servers that the bot is in"]
+#[checks(Admin)]
+pub fn notify(context: &mut Context, message: &Message, arguments: Args) -> CommandResult {
+    if arguments.len() == 0 {
+        say_error!(message, context, "No message was provided!");
+        return Ok(());
+    }
+
+    let mut database = get_db_handle!(context.data.read());
+
+    let channel_iterator = match database.sscan::<&str, u64>("channels") {
+        Ok(iter) => iter,
+        Err(msg) => {
+            error!("unable to iterate over the mirror channels: {:?}", msg);
+            return Ok(());
+        }
+    };
+
+    for channel in channel_iterator {
+        if channel == message.channel_id.0 {
+            continue
+        }
+
+        let channel = match ChannelId(channel).to_channel(&context) {
+            Ok(chan) => match chan {
+                Channel::Guild(chan) => chan,
+                _ => {
+                    error!("channel is not a guild channel");
+                    continue
+                }
+            }
+            Err(msg) => {
+                error!("unable to get channel: {:?}", msg);
+                continue
+            }
+        };
+        let channel = channel.read();
+
+        let guild = match channel.guild_id.to_partial_guild(&context.http) {
+            Ok(guild) => guild,
+            Err(msg) => {
+                error!("unable to get partial guild: {:?}", msg);
+                continue
+            }
+        };
+
+        match channel.say(&context.http, format!("**Notification (<@{}>):** {}", guild.owner_id.0, arguments.message())) {
+            Ok(_) => (),
+            Err(msg) => {
+                error!("unable to say message: {:?}", msg);
+                continue
+            }
+        }
+    }
+
+    say!(message, context, "Notification", "Your notification has been sent.");
+
+    return Ok(());
 }
 
 #[command]

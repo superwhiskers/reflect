@@ -135,13 +135,6 @@ impl EventHandler for Handler {
         content.push_str(&message.content_safe(&context.cache));
 
         debug!("mirroring message");
-        let channel_iterator = match database.sscan::<&str, u64>("channels") {
-            Ok(iter) => iter,
-            Err(msg) => {
-                error!("unable to iterate over the mirror channels: {:?}", msg);
-                return;
-            }
-        };
 
         let mut files: Vec<AttachmentType> = Vec::with_capacity(message.attachments.len());
 
@@ -157,6 +150,14 @@ impl EventHandler for Handler {
                 }
             }
         }
+
+        let channel_iterator = match database.sscan::<&str, u64>("channels") {
+            Ok(iter) => iter,
+            Err(msg) => {
+                error!("unable to iterate over the mirror channels: {:?}", msg);
+                return;
+            }
+        };
 
         for channel in channel_iterator {
             let channel = ChannelId(channel);
