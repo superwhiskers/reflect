@@ -23,14 +23,14 @@ use serenity::{
     model::channel::Message,
     model::gateway::{Activity, Ready},
     model::guild::{Guild, PartialGuild},
-    model::id::ChannelId,
+    model::id::{ChannelId, GuildId},
     prelude::*,
 };
 use std::{borrow::Cow, sync::Arc};
 
 use crate::{get_db_handle, types};
 
-pub struct Handler;
+pub struct EventHandler;
 impl EventHandler for Handler {
     fn ready(&self, context: Context, event: Ready) {
         debug!("got ready event: {:?}", event);
@@ -53,14 +53,16 @@ impl EventHandler for Handler {
 
     fn guild_delete(&self, context: Context, guild: PartialGuild, _: Option<Arc<RwLock<Guild>>>) {
         debug!(
-            "the bot has been removed from a guild (\"{}\", {}) updating redis to reflect this",
-            guild.name, guild.id.0
+            "the bot has been removed from guild {} updating redis to reflect this",
+            guild.id.0
         );
 
         let mut database = get_db_handle!(context.data.read());
 
         match database.hget::<u64, &str, Option<u64>>(guild.id.0, "mirror_channel") {
             Ok(chan) => {
+                debug!("retrieved response: {:?}", chan);
+
                 if let Some(chan) = chan {
                     debug!("found a mirror channel for guild {} at {}", guild.id.0, chan);
 
