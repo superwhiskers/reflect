@@ -30,7 +30,7 @@ use std::{borrow::Cow, sync::Arc};
 
 use crate::{get_db_handle, types};
 
-pub struct EventHandler;
+pub struct Handler;
 impl EventHandler for Handler {
     fn ready(&self, context: Context, event: Ready) {
         debug!("got ready event: {:?}", event);
