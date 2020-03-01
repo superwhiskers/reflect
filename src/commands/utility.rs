@@ -79,14 +79,14 @@ pub fn user(context: &mut Context, message: &Message, arguments: Args) -> Comman
 
     debug!("got user to look up: {:?}", user);
 
-    message.channel_id.send_message(&context.http, |m| {
+    message.channel_id.send_message(&context, |m| {
         m.embed(|e| {
             e.title(user.tag())
                 .description(format!("Showing user information for {}", user.name))
                 .thumbnail(user.face())
                 .fields(vec![
                     ("Information", format!("**ID:** {}\n**Bot:** {}\n", user.id.0, user.bot), false),
-                    ("Mirror Channel Servers", String::from("Unimplemented"), false),
+                    ("Mirror Channel Servers", "Unimplemented".into(), false),
                 ])
                 .color(colors::PRIMARY)
         })
@@ -134,7 +134,7 @@ pub fn notify(context: &mut Context, message: &Message, arguments: Args) -> Comm
         };
         let channel = channel.read();
 
-        let guild = match channel.guild_id.to_partial_guild(&context.http) {
+        let guild = match channel.guild_id.to_partial_guild(&context) {
             Ok(guild) => guild,
             Err(msg) => {
                 error!("unable to get partial guild: {:?}", msg);
@@ -142,7 +142,7 @@ pub fn notify(context: &mut Context, message: &Message, arguments: Args) -> Comm
             }
         };
 
-        match channel.say(&context.http, format!("**Notification (<@{}>):** {}", guild.owner_id.0, arguments.message())) {
+        match channel.say(&context, format!("**Notification (<@{}>):** {}", guild.owner_id.0, arguments.message())) {
             Ok(_) => (),
             Err(msg) => {
                 error!("unable to say message: {:?}", msg);
@@ -196,7 +196,7 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
     }
 
     // send the initial status message
-    let mut status_message = message.channel_id.send_message(&context.http, |m| {
+    let mut status_message = message.channel_id.send_message(&context, |m| {
         m.embed(|e| {
             e.title("Enabling")
                 .description(format!(
@@ -310,7 +310,7 @@ pub fn enable(context: &mut Context, message: &Message, arguments: Args) -> Comm
 #[required_permissions(ADMINISTRATOR)]
 pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
     // send the initial status message
-    let mut status_message = message.channel_id.send_message(&context.http, |m| {
+    let mut status_message = message.channel_id.send_message(&context, |m| {
         m.embed(|e| {
             e.title("Disabling")
                 .description("Disabling your server's mirror channel")
@@ -347,7 +347,7 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                 // remove the guild from the top-level key-value store
                 match redis::cmd("UNLINK")
                     .arg(guild_id)
-                    .query::<u8>(&mut (*database))
+                    .query::<u64>(&mut (*database))
                 {
                     Ok(_) => (),
                     Err(msg) => {

@@ -48,7 +48,7 @@ macro_rules! get_db_handle {
 #[macro_export]
 macro_rules! say_error {
     ($message:ident, $context:ident, $content:expr) => {
-        $message.channel_id.send_message(&$context.http, |m| {
+        $message.channel_id.send_message(&$context, |m| {
             m.embed(|e| {
                 e.title("Error")
                     .description($content)
@@ -62,7 +62,7 @@ macro_rules! say_error {
 #[macro_export]
 macro_rules! say_warning {
     ($message:ident, $context:ident, $content:expr) => {
-        $message.channel_id.send_message(&$context.http, |m| {
+        $message.channel_id.send_message(&$context, |m| {
             m.embed(|e| {
                 e.title("Warning")
                     .description($content)
@@ -76,7 +76,7 @@ macro_rules! say_warning {
 #[macro_export]
 macro_rules! say {
     ($message:ident, $context:ident, $title:expr, $content:expr) => {
-        $message.channel_id.send_message(&$context.http, |m| {
+        $message.channel_id.send_message(&$context, |m| {
             m.embed(|e| {
                 e.title($title)
                     .description($content)

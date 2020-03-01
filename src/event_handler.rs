@@ -17,15 +17,16 @@
 //
 
 use log::{debug, error, info};
-use r2d2_redis::redis::Commands;
+use r2d2_redis::redis::{self, Commands};
 use serenity::{
     http::AttachmentType,
     model::channel::Message,
     model::gateway::{Activity, Ready},
     model::id::ChannelId,
+    model::guild::{Guild, PartialGuild},
     prelude::*,
 };
-use std::borrow::Cow;
+use std::{sync::Arc, borrow::Cow};
 
 use crate::{get_db_handle, types};
 
@@ -48,6 +49,29 @@ impl EventHandler for Handler {
         context.set_activity(Activity::listening(
             format!("your conversations | {}", prefix).as_str(),
         ));
+    }
+
+    fn guild_delete(&self, context: Context, guild: PartialGuild, _: Option<Arc<RwLock<Guild>>>) {
+        debug!("the bot has been removed from a guild (\"{}\", {}) updating redis to reflect this", guild.name, guild.id.0);
+
+        let mut database = get_db_handle!(context.data.read());
+
+        match database.srem::<&str, u64, bool>("channels", guild.id.0) {
+            Ok(_) => (),
+            Err(msg) => {
+                error!("unable to remove a mirror channel from the channels set: {:?}", msg);
+            },
+        }
+
+        match redis::cmd("UNLINK")
+            .arg(guild.id.0)
+            .query::<u64>(&mut (*database))
+        {
+            Ok(_) => (),
+            Err(msg) => {
+                error!("unable to remove a guild's top-level hash from redis: {:?}", msg);
+            },
+        }
     }
 
     fn message(&self, context: Context, message: Message) {
@@ -164,7 +188,7 @@ impl EventHandler for Handler {
             if channel == message.channel_id {
                 continue;
             }
-            if let Err(msg) = channel.send_message(&context.http, |m| {
+            if let Err(msg) = channel.send_message(&context, |m| {
                 m.content(&content);
                 m.2 = files.clone();
                 m

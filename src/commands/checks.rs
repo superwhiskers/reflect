@@ -50,7 +50,7 @@ pub fn bot_administrator(
             // let the caller know that they are not an admin
             if let Err(msg) = message
                 .channel_id
-                .say(&context.http, "**Error:** You are not an admin!")
+                .say(&context, "**Error:** You are not an admin!")
             {
                 return CheckResult::new_log(msg);
             }

@@ -101,7 +101,7 @@ pub fn ban(context: &mut Context, message: &Message, arguments: Args) -> Command
 
     // provide a form of feedback
     message.channel_id.say(
-        &context.http,
+        &context,
         format!(
             "Successfully banned `{}` from the global mirror channel!",
             user_id
@@ -163,7 +163,7 @@ pub fn unban(context: &mut Context, message: &Message, arguments: Args) -> Comma
 
     // provide a form of feedback
     message.channel_id.say(
-        &context.http,
+        &context,
         format!(
             "Successfully unbanned `{}` from the global mirror channel!",
             user_id
