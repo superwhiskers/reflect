@@ -62,19 +62,13 @@ impl EventHandler for Handler {
         match database.hget::<u64, &str, Option<u64>>(guild.id.0, "mirror_channel") {
             Ok(chan) => {
                 if let Some(chan) = chan {
-                    debug!(
-                        "found a mirror channel for guild {} at {}",
-                        guild.id.0, chan
-                    );
+                    debug!("found a mirror channel for guild {} at {}", guild.id.0, chan);
 
-                    // remove the channel from the channel's set
+                    // remove the channel from the channels set
                     match database.srem::<&str, u64, bool>("channels", chan) {
                         Ok(_) => (),
                         Err(msg) => {
-                            error!(
-                                "unable to remove a mirror channel from the channels set: {:?}",
-                                msg
-                            );
+                            error!("unable to disable an existing miror channel from the channels set: {:?}", msg);
                         }
                     }
                 }
