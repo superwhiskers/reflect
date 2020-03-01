@@ -24,14 +24,16 @@ use serenity::{
         Args, CommandResult,
     },
     model::{
-        channel::{Message, Channel},
+        channel::{Channel, Message},
         id::{ChannelId, UserId},
     },
     prelude::*,
 };
 use std::str::FromStr;
 
-use crate::{colors, get_db_handle, say_error, say, commands::checks::ADMIN_CHECK, utils::resolve_user};
+use crate::{
+    colors, commands::checks::ADMIN_CHECK, get_db_handle, say, say_error, utils::resolve_user,
+};
 
 #[group]
 #[description = "General commands for doing things with the bot"]
@@ -85,7 +87,11 @@ pub fn user(context: &mut Context, message: &Message, arguments: Args) -> Comman
                 .description(format!("Showing user information for {}", user.name))
                 .thumbnail(user.face())
                 .fields(vec![
-                    ("Information", format!("**ID:** {}\n**Bot:** {}\n", user.id.0, user.bot), false),
+                    (
+                        "Information",
+                        format!("**ID:** {}\n**Bot:** {}\n", user.id.0, user.bot),
+                        false,
+                    ),
                     ("Mirror Channel Servers", "Unimplemented".into(), false),
                 ])
                 .color(colors::PRIMARY)
@@ -116,7 +122,7 @@ pub fn notify(context: &mut Context, message: &Message, arguments: Args) -> Comm
 
     for channel in channel_iterator {
         if channel == message.channel_id.0 {
-            continue
+            continue;
         }
 
         let channel = match ChannelId(channel).to_channel(&context) {
@@ -124,12 +130,12 @@ pub fn notify(context: &mut Context, message: &Message, arguments: Args) -> Comm
                 Channel::Guild(chan) => chan,
                 _ => {
                     error!("channel is not a guild channel");
-                    continue
+                    continue;
                 }
-            }
+            },
             Err(msg) => {
                 error!("unable to get channel: {:?}", msg);
-                continue
+                continue;
             }
         };
         let channel = channel.read();
@@ -138,20 +144,32 @@ pub fn notify(context: &mut Context, message: &Message, arguments: Args) -> Comm
             Ok(guild) => guild,
             Err(msg) => {
                 error!("unable to get partial guild: {:?}", msg);
-                continue
+                continue;
             }
         };
 
-        match channel.say(&context, format!("**Notification (<@{}>):** {}", guild.owner_id.0, arguments.message())) {
+        match channel.say(
+            &context,
+            format!(
+                "**Notification (<@{}>):** {}",
+                guild.owner_id.0,
+                arguments.message()
+            ),
+        ) {
             Ok(_) => (),
             Err(msg) => {
                 error!("unable to say message: {:?}", msg);
-                continue
+                continue;
             }
         }
     }
 
-    say!(message, context, "Notification", "Your notification has been sent.");
+    say!(
+        message,
+        context,
+        "Notification",
+        "Your notification has been sent."
+    );
 
     return Ok(());
 }
@@ -344,26 +362,6 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                     }
                 }
 
-                // remove the guild from the top-level key-value store
-                match redis::cmd("UNLINK")
-                    .arg(guild_id)
-                    .query::<u64>(&mut (*database))
-                {
-                    Ok(_) => (),
-                    Err(msg) => {
-                        error!(
-                            "unable to remove the guild {}'s top-level hash from redis: {:?}",
-                            guild_id, msg
-                        );
-                        say_error!(
-                            message,
-                            context,
-                            "Unable to remove the channel id from the guild hash!"
-                        );
-                        return Ok(());
-                    }
-                }
-
                 status_message.edit(&context, |m| {
                     m.embed(|e| {
                         e.title("Disabling")
@@ -389,6 +387,26 @@ pub fn disable(context: &mut Context, message: &Message) -> CommandResult {
                 message,
                 context,
                 "Unable to check for an existing mirror channel!"
+            );
+            return Ok(());
+        }
+    }
+
+    // remove the guild from the top-level key-value store
+    match redis::cmd("UNLINK")
+        .arg(guild_id)
+        .query::<u64>(&mut (*database))
+    {
+        Ok(_) => (),
+        Err(msg) => {
+            error!(
+                "unable to remove the guild {}'s top-level hash from redis: {:?}",
+                guild_id, msg
+            );
+            say_error!(
+                message,
+                context,
+                "Unable to remove the channel id from the guild hash!"
             );
             return Ok(());
         }

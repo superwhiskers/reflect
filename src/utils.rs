@@ -16,8 +16,8 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-use log::{debug, error};
 use crate::get_db_handle;
+use log::{debug, error};
 use r2d2_redis::redis::Commands;
 use serenity::{framework::standard::Args, model::channel::Message, prelude::*};
 
@@ -27,7 +27,10 @@ fn usercache_lookup(
     _: &Message,
     arguments: Args,
 ) -> Result<Vec<u64>, &'static str> {
-    debug!("performing a usercache lookup of \"{}\"", arguments.message());
+    debug!(
+        "performing a usercache lookup of \"{}\"",
+        arguments.message()
+    );
 
     let mut database = get_db_handle!(context.data.read());
 

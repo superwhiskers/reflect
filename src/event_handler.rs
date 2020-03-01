@@ -22,11 +22,11 @@ use serenity::{
     http::AttachmentType,
     model::channel::Message,
     model::gateway::{Activity, Ready},
-    model::id::ChannelId,
     model::guild::{Guild, PartialGuild},
+    model::id::ChannelId,
     prelude::*,
 };
-use std::{sync::Arc, borrow::Cow};
+use std::{borrow::Cow, sync::Arc};
 
 use crate::{get_db_handle, types};
 
@@ -52,25 +52,53 @@ impl EventHandler for Handler {
     }
 
     fn guild_delete(&self, context: Context, guild: PartialGuild, _: Option<Arc<RwLock<Guild>>>) {
-        debug!("the bot has been removed from a guild (\"{}\", {}) updating redis to reflect this", guild.name, guild.id.0);
+        debug!(
+            "the bot has been removed from a guild (\"{}\", {}) updating redis to reflect this",
+            guild.name, guild.id.0
+        );
 
         let mut database = get_db_handle!(context.data.read());
 
-        match database.srem::<&str, u64, bool>("channels", guild.id.0) {
-            Ok(_) => (),
+        match database.hget::<u64, &str, Option<u64>>(guild.id.0, "mirror_channel") {
+            Ok(chan) => {
+                if let Some(chan) = chan {
+                    debug!(
+                        "found a mirror channel for guild {} at {}",
+                        guild.id.0, chan
+                    );
+
+                    // remove the channel from the channel's set
+                    match database.srem::<&str, u64, bool>("channels", chan) {
+                        Ok(_) => (),
+                        Err(msg) => {
+                            error!(
+                                "unable to remove a mirror channel from the channels set: {:?}",
+                                msg
+                            );
+                        }
+                    }
+                }
+            }
             Err(msg) => {
-                error!("unable to remove a mirror channel from the channels set: {:?}", msg);
-            },
+                error!(
+                    "unable to check for an existing mirror channel in a guild: {:?}",
+                    msg
+                );
+            }
         }
 
+        // remove the guild from the top-level key-value store
         match redis::cmd("UNLINK")
             .arg(guild.id.0)
             .query::<u64>(&mut (*database))
         {
             Ok(_) => (),
             Err(msg) => {
-                error!("unable to remove a guild's top-level hash from redis: {:?}", msg);
-            },
+                error!(
+                    "unable to remove a guild's top-level hash from redis: {:?}",
+                    msg
+                );
+            }
         }
     }
 
